@@ -1,0 +1,58 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.4.5'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+// plain JAR 비활성화
+tasks.named('jar') {
+    enabled = false
+}
+
+// 소스 JAR 비활성화 (sources.jar)
+tasks.matching { it.name == 'sourcesJar' }.configureEach {
+    enabled = false
+}
+
+group = 'com.springboot'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+	withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'com.googlecode.juniversalchardet:juniversalchardet:1.0.3'
+    implementation 'jakarta.xml.bind:jakarta.xml.bind-api:4.0.0'
+    // MySQL Driver
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    
+    // 이미지/영상 포맷 확장 (3.10.0)
+    implementation 'com.twelvemonkeys.imageio:imageio-core:3.10.0'
+    implementation 'com.twelvemonkeys.imageio:imageio-jpeg:3.10.0'
+    implementation 'com.twelvemonkeys.imageio:imageio-bmp:3.10.0'
+    implementation 'com.twelvemonkeys.imageio:imageio-tiff:3.10.0'
+    implementation 'com.twelvemonkeys.imageio:imageio-webp:3.10.0'
+    implementation 'org.jcodec:jcodec:0.2.5' // 영상 변환
+}
+
+tasks.withType(JavaCompile) {
+	options.compilerArgs += ['-parameters']
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
