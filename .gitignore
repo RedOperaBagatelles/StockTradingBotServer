@@ -235,3 +235,4 @@ replay_pid*
 .metadata
 .recommenders
 TradingBotWeb/gradle/wrapper/gradle-wrapper.properties
+TradingCore/Core/Config.h

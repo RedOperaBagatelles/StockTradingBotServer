@@ -60,9 +60,11 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
     <RemoteRootDir>~/Trader</RemoteRootDir>
+    <RemoteCopyIncludeDirectories>/usr/include</RemoteCopyIncludeDirectories>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
+    <RemoteCopyIncludeDirectories>/usr/include</RemoteCopyIncludeDirectories>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
@@ -76,13 +78,41 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
-    <ClCompile Include="test.cpp" />
+    <ClCompile Include="Core\Application.cpp" />
+    <ClCompile Include="Core\LiftCycle.cpp" />
+    <ClCompile Include="Core\Log.cpp" />
+    <ClCompile Include="Login.cpp" />
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Core\Application.h" />
+    <ClInclude Include="Core\Config.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Core\LiftCycle.h" />
+    <ClInclude Include="Core\Log.h" />
+    <ClInclude Include="Login.h" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <PostBuildEvent>
       <Command>
       </Command>
     </PostBuildEvent>
+    <Link>
+      <AdditionalOptions>-lcurl %(AdditionalOptions)</AdditionalOptions>
+      <LibraryDependencies>curl
+;websockets</LibraryDependencies>
+    </Link>
+    <ClCompile>
+      <PreprocessorDefinitions>DEBUG</PreprocessorDefinitions>
+      <AdditionalOptions>-std=c++20 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
+      <AdditionalOptions>-std=c++20 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
