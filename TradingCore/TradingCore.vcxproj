@@ -81,6 +81,7 @@
     <ClCompile Include="Core\Application.cpp" />
     <ClCompile Include="Core\LiftCycle.cpp" />
     <ClCompile Include="Core\Log.cpp" />
+    <ClCompile Include="Utility\Directory.cpp" />
     <ClCompile Include="Login.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
@@ -91,6 +92,7 @@
   <ItemGroup>
     <ClInclude Include="Core\LiftCycle.h" />
     <ClInclude Include="Core\Log.h" />
+    <ClInclude Include="Utility\Directory.h" />
     <ClInclude Include="Login.h" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -106,12 +108,15 @@
     <ClCompile>
       <PreprocessorDefinitions>DEBUG</PreprocessorDefinitions>
       <AdditionalOptions>-std=c++20 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>./;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <AdditionalOptions>-std=c++20 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>./;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

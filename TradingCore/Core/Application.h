@@ -10,7 +10,7 @@ public:
 	void Initialize() override;
 
 private:
-	Application() = default;
+	Application();
 	Application(const Application&) = delete;
 	Application& operator=(const Application&) = delete;
 };

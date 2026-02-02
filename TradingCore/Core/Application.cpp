@@ -11,5 +11,9 @@ Application& Application::GetInstance()
 void Application::Initialize()
 {
 	LiftCycle::Initialize();
+}
+
+Application::Application()
+{
 	Log::GetInstance();
 }

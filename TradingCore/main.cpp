@@ -171,8 +171,8 @@ static int CallBackWebSocket(struct lws* wsi, enum lws_callback_reasons reason, 
                 return -1;
             }
 
-			g_log.LogMessage(Log::Level::ERROR, ("Message sent : " + messageToSend).c_str());
-			g_log.LogConsole(Log::Level::ERROR, ("Message sent : " + messageToSend).c_str());
+			g_log.LogMessage(Log::Level::INFO, ("Message sent : " + messageToSend).c_str());
+			g_log.LogConsole(Log::Level::INFO, ("Message sent : " + messageToSend).c_str());
 
             hasMessageToSend = false;
         }
