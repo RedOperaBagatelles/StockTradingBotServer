@@ -78,6 +78,8 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
+    <ClCompile Include="Utility\Convert.cpp" />
+    <ClCompile Include="Trade\Account.cpp" />
     <ClCompile Include="Core\Application.cpp" />
     <ClCompile Include="Core\LiftCycle.cpp" />
     <ClCompile Include="Core\Log.cpp" />
@@ -86,6 +88,8 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Utility\Convert.h" />
+    <ClInclude Include="Trade\Account.h" />
     <ClInclude Include="Core\Application.h" />
     <ClInclude Include="Core\Config.h" />
   </ItemGroup>

@@ -1,4 +1,6 @@
-﻿#include "Core/Log.h"
+﻿#pragma once
+
+#include "Core/Log.h"
 
 #include <string>
 
