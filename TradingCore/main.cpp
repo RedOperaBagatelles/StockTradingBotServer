@@ -1,6 +1,7 @@
 ﻿#include "Login.h"
 
 #include "Core/Application.h"
+#include "Trade/Account.h"
 #include "Core/Config.h"
 
 #include <iostream>
@@ -381,6 +382,10 @@ int main()
             messageSent = true;
         }
     });
+
+    Account::SetUseAccount(true);       // 계좌 설정
+    Account::RefreshCurrentHoldings();  // 잔고 조회
+    Account::ShowHoldings();            // 출력
 
     // 이벤트 루프
     while (isKeepRunning && lws_service(context, 50) >= 0)

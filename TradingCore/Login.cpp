@@ -16,7 +16,11 @@ std::string Login::GetAccessToken()
     Log& log = Log::GetInstance();
 
     std::string readBuffer;
-    std::string token;
+    static std::string token;
+
+	// 이미 토큰이 발급된 경우 재사용
+    if (token != "")
+		return token;
 
     // 1. 요청할 API URL
     std::string endpoint = "/oauth2/token";
