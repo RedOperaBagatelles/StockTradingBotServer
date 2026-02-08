@@ -37,8 +37,7 @@ std::set<std::string>& Account::GetAllAccountNumbers()
 
     if (token.empty())
     {
-		log.LogConsole(Log::Level::ERROR, "접근 토큰이 비어있습니다. 계좌 조회를 중단합니다.");
-		log.LogMessage(Log::Level::ERROR, "접근 토큰이 비어있습니다. 계좌 조회를 중단합니다.");
+		log.Output(LogLevel::ERROR, "접근 토큰이 비어있습니다. 계좌 조회를 중단합니다.");
 
         return accounts;
     }
@@ -58,8 +57,7 @@ std::set<std::string>& Account::GetAllAccountNumbers()
 
         if (curl == nullptr)
         {
-            log.LogConsole(Log::Level::ERROR, "CURL 초기화 실패 (Account::GetAllAccountNumbers)");
-            log.LogMessage(Log::Level::ERROR, "CURL 초기화 실패 (Account::GetAllAccountNumbers)");
+            log.Output(LogLevel::ERROR, "CURL 초기화 실패 (Account::GetAllAccountNumbers)");
 
             break;
         }
@@ -97,8 +95,7 @@ std::set<std::string>& Account::GetAllAccountNumbers()
         if (response != CURLE_OK)
         {
             std::string errorMessage = std::string("HTTP 요청 실패 : ") + curl_easy_strerror(response);
-            log.LogConsole(Log::Level::ERROR, errorMessage.c_str());
-            log.LogMessage(Log::Level::ERROR, errorMessage.c_str());
+            log.Output(LogLevel::ERROR, errorMessage.c_str());
 
             curl_slist_free_all(headers);
             curl_easy_cleanup(curl);
@@ -115,8 +112,7 @@ std::set<std::string>& Account::GetAllAccountNumbers()
         {
             std::string errorMessage = "계좌 번호 호출 비정상 응답 코드 수신 : " + std::to_string(responseCode);
 
-            log.LogConsole(Log::Level::ERROR, errorMessage.c_str());
-            log.LogMessage(Log::Level::ERROR, errorMessage.c_str());
+            log.Output(LogLevel::ERROR, errorMessage.c_str());
 
             curl_slist_free_all(headers);
             curl_easy_cleanup(curl);
@@ -156,7 +152,7 @@ std::set<std::string>& Account::GetAllAccountNumbers()
             {
                 json data = json::parse(readBuffer);
 
-				// 만약 응답에 acctNo 키가 있고, 그 값이 문자열일 경우
+                // 만약 응답에 acctNo 키가 있고, 그 값이 문자열일 경우
                 if (data.contains("acctNo") && data["acctNo"].is_string())
                 {
                     std::string account = data["acctNo"].get<std::string>();
@@ -165,7 +161,7 @@ std::set<std::string>& Account::GetAllAccountNumbers()
                         accounts.insert(account);
                 }
 
-				// 만약 응답에 acctNo 키가 있고, 그 값이 배열일 경우
+                // 만약 응답에 acctNo 키가 있고, 그 값이 배열일 경우
                 else if (data.contains("acctNo") && data["acctNo"].is_array())
                 {
                     for (auto& accountElement : data["acctNo"])
@@ -175,18 +171,18 @@ std::set<std::string>& Account::GetAllAccountNumbers()
                     }
                 }
 
-				// 그 외에 데이터 구조에 대해서 보수적으로 스캔
+                // 그 외에 데이터 구조에 대해서 보수적으로 스캔
                 else
                 {
-					// 모든 키-값 쌍을 순회
+                    // 모든 키-값 쌍을 순회
                     for (auto iter = data.begin(); iter != data.end(); ++iter)
                     {
-					std::string key = iter.key();   // 키 가져오기
-					std::string lk = key;           // 소문자로 변환
+                        std::string key = iter.key();   // 키 가져오기
+                        std::string lk = key;           // 소문자로 변환
 
                         std::transform(lk.begin(), lk.end(), lk.begin(), ::tolower);
 
-					// 계좌 관련 키인지 확인
+                        // 계좌 관련 키인지 확인
                         if (lk.find("acct") != std::string::npos || lk.find("account") != std::string::npos)
                         {
                             if (iter.value().is_string())
@@ -210,8 +206,7 @@ std::set<std::string>& Account::GetAllAccountNumbers()
         {
             std::string err = std::string("JSON 파싱 오류: ") + e.what();
 
-            log.LogConsole(Log::Level::ERROR, err.c_str());
-            log.LogMessage(Log::Level::ERROR, err.c_str());
+            log.Output(LogLevel::ERROR, err.c_str());
         }
 
         curl_slist_free_all(headers);
@@ -247,14 +242,12 @@ void Account::SetUseAccount(const bool isFake)
     {
 		currentAccountNumber = accountNumber;
 
-		log.LogConsole(Log::Level::INFO, ("지정된 계좌번호 " + std::string(accountNumber) + "(으)로 설정합니다.").c_str());
-		log.LogMessage(Log::Level::INFO, ("지정된 계좌번호 " + std::string(accountNumber) + "(으)로 설정합니다.").c_str());
+		log.Output(LogLevel::INFO, ("지정된 계좌번호 " + std::string(accountNumber) + "(으)로 설정합니다.").c_str());
 
         return;
     }
 
-	log.LogConsole(Log::Level::WARNING, "지정된 계좌번호를 찾을 수 없습니다. 기본 계좌번호로 설정합니다.");
-	log.LogMessage(Log::Level::WARNING, "지정된 계좌번호를 찾을 수 없습니다. 기본 계좌번호로 설정합니다.");
+	log.Output(LogLevel::WARNING, "지정된 계좌번호를 찾을 수 없습니다. 기본 계좌번호로 설정합니다.");
 
     // 계좌번호가 없으면 첫 번째 계좌번호를 사용하도록 설정
 	std::set<std::string> allAccounts = GetAllAccountNumbers();
@@ -262,8 +255,7 @@ void Account::SetUseAccount(const bool isFake)
     if (!allAccounts.empty())
 		currentAccountNumber = *allAccounts.begin();
 
-	log.LogConsole(Log::Level::INFO, ("기본 계좌번호 " + currentAccountNumber + "(으)로 설정합니다.").c_str());
-	log.LogMessage(Log::Level::INFO, ("기본 계좌번호 " + currentAccountNumber + "(으)로 설정합니다.").c_str());
+	log.Output(LogLevel::INFO, ("기본 계좌번호 " + currentAccountNumber + "(으)로 설정합니다.").c_str());
 }
 
 std::string& Account::GetCurrentAccountNumber()
@@ -291,8 +283,7 @@ void Account::RefreshCurrentHoldings()
     // 현재 계좌번호 확인
     if (currentAccountNumber.empty())
     {
-        log.LogConsole(Log::Level::ERROR, "현재 사용 중인 계좌번호가 설정되지 않았습니다.");
-        log.LogMessage(Log::Level::ERROR, "현재 사용 중인 계좌번호가 설정되지 않았습니다.");
+        log.Output(LogLevel::ERROR, "현재 사용 중인 계좌번호가 설정되지 않았습니다.");
 
         return;
     }
@@ -302,8 +293,7 @@ void Account::RefreshCurrentHoldings()
 
     if (token.empty())
     {
-        log.LogConsole(Log::Level::ERROR, "접근 토큰이 비어있습니다. 잔고 조회를 중단합니다.");
-        log.LogMessage(Log::Level::ERROR, "접근 토큰이 비어있습니다. 잔고 조회를 중단합니다.");
+        log.Output(LogLevel::ERROR, "접근 토큰이 비어있습니다. 잔고 조회를 중단합니다.");
 
         return;
     }
@@ -320,8 +310,7 @@ void Account::RefreshCurrentHoldings()
     // 기존 holdings 초기화
     holdings.clear();
 
-    log.LogConsole(Log::Level::INFO, "현재 보유 종목 조회를 시작합니다...");
-    log.LogMessage(Log::Level::INFO, "현재 보유 종목 조회를 시작합니다...");
+    log.Output(LogLevel::INFO, "현재 보유 종목 조회를 시작합니다...");
 
     for (int page = 0; page < maxPages; page++)
     {
@@ -329,8 +318,7 @@ void Account::RefreshCurrentHoldings()
 
         if (curl == nullptr)
         {
-            log.LogConsole(Log::Level::ERROR, "CURL 초기화 실패 (Account::FetchCurrentHoldings)");
-            log.LogMessage(Log::Level::ERROR, "CURL 초기화 실패 (Account::FetchCurrentHoldings)");
+            log.Output(LogLevel::ERROR, "CURL 초기화 실패 (Account::FetchCurrentHoldings)");
 
             break;
         }
@@ -375,8 +363,7 @@ void Account::RefreshCurrentHoldings()
         {
             std::string errorMessage = std::string("HTTP 요청 실패 : ") + curl_easy_strerror(response);
 
-            log.LogConsole(Log::Level::ERROR, errorMessage.c_str());
-            log.LogMessage(Log::Level::ERROR, errorMessage.c_str());
+            log.Output(LogLevel::ERROR, errorMessage.c_str());
 
             curl_slist_free_all(headers);
             curl_easy_cleanup(curl);
@@ -390,8 +377,7 @@ void Account::RefreshCurrentHoldings()
         {
             std::string errorMessage = "잔고 조회 비정상 응답 코드 수신 : " + std::to_string(responseCode);
 
-            log.LogConsole(Log::Level::ERROR, errorMessage.c_str());
-            log.LogMessage(Log::Level::ERROR, errorMessage.c_str());
+            log.Output(LogLevel::ERROR, errorMessage.c_str());
 
             curl_slist_free_all(headers);
             curl_easy_cleanup(curl);
@@ -436,8 +422,7 @@ void Account::RefreshCurrentHoldings()
                     std::ostringstream oss;
                     oss << "잔고 조회 실패: [" << returnCode << "] " << returnMsg;
 
-                    log.LogConsole(Log::Level::ERROR, oss.str().c_str());
-                    log.LogMessage(Log::Level::ERROR, oss.str().c_str());
+                    log.Output(LogLevel::ERROR, oss.str().c_str());
 
                     break;
                 }
@@ -491,8 +476,7 @@ void Account::RefreshCurrentHoldings()
                             << "손익 = " << holding.profitLoss << " "
                             << "수익률 = " << holding.profitRate << "%";
 
-                        log.LogConsole(Log::Level::INFO, oss.str().c_str());
-                        log.LogMessage(Log::Level::INFO, oss.str().c_str());
+                        log.Output(LogLevel::INFO, oss.str().c_str());
                     }
                 }
             }
@@ -501,8 +485,7 @@ void Account::RefreshCurrentHoldings()
         catch (json::parse_error& e)
         {
             std::string err = std::string("JSON 파싱 오류: ") + e.what();
-            log.LogConsole(Log::Level::ERROR, err.c_str());
-            log.LogMessage(Log::Level::ERROR, err.c_str());
+            log.Output(LogLevel::ERROR, err.c_str());
         }
 
         curl_slist_free_all(headers);
@@ -518,8 +501,7 @@ void Account::RefreshCurrentHoldings()
     std::ostringstream summary;
     summary << "보유 종목 조회 완료. 총 " << holdings.size() << "개 종목";
 
-    log.LogConsole(Log::Level::INFO, summary.str().c_str());
-    log.LogMessage(Log::Level::INFO, summary.str().c_str());
+    log.Output(LogLevel::INFO, summary.str().c_str());
 }
 
 void Account::ShowHoldings()
@@ -528,14 +510,14 @@ void Account::ShowHoldings()
 
     if (holdings.empty())
     {
-        log.LogConsole(Log::Level::INFO, "보유 종목이 없습니다.");
+		log.Output(LogLevel::INFO, "보유 종목이 없습니다.", LogTarget::CONSOLE);
 
         return;
     }
 
     std::ostringstream oss;
     oss << "\n========== 현재 보유 종목 ==========";
-    log.LogConsole(Log::Level::INFO, oss.str().c_str());
+	log.Output(LogLevel::INFO, oss.str().c_str(), LogTarget::CONSOLE);
 
     double totalValue = 0.0;
     double totalProfitLoss = 0.0;
@@ -553,7 +535,7 @@ void Account::ShowHoldings()
              << "  평가금액 : " << holding.value << "원\n"
              << "  평가손익 : " << holding.profitLoss << "원 (" << holding.profitRate << "%)";
 
-        log.LogConsole(Log::Level::INFO, line.str().c_str());
+		log.Output(LogLevel::INFO, line.str().c_str(), LogTarget::CONSOLE);
 
         totalValue += static_cast<double>(holding.value);
         totalProfitLoss += static_cast<double>(holding.profitLoss);
@@ -564,5 +546,5 @@ void Account::ShowHoldings()
               << "총 평가금액 : " << static_cast<long long>(totalValue) << "원\n"
               << "총 평가손익 : " << static_cast<long long>(totalProfitLoss) << "원";
 
-    log.LogConsole(Log::Level::INFO, totalLine.str().c_str());
+	log.Output(LogLevel::INFO, totalLine.str().c_str(), LogTarget::CONSOLE);
 }

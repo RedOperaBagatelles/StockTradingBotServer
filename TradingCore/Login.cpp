@@ -40,8 +40,7 @@ std::string Login::GetAccessToken()
 
     if (curl == nullptr)
     {
-        log.LogMessage(Log::Level::ERROR, "CURL 초기화 실패");
-		log.LogConsole(Log::Level::ERROR, "CURL 초기화 실패");
+        log.Output(LogLevel::ERROR, "CURL 초기화 실패");
 
         return nullptr;
     }
@@ -63,8 +62,7 @@ std::string Login::GetAccessToken()
     if (res != CURLE_OK)
     {
         std::string errorMessage = "HTTP 요청 실패 : " + std::string(curl_easy_strerror(res));
-		log.LogConsole(Log::Level::ERROR, errorMessage.c_str());
-		log.LogMessage(Log::Level::ERROR, errorMessage.c_str());
+		log.Output(LogLevel::ERROR, errorMessage.c_str());
     }
 
     else
@@ -91,8 +89,7 @@ std::string Login::GetAccessToken()
         {
 			std::string errorMessage = "JSON 파싱 오류 발생 : " + std::string(e.what());
 
-			log.LogConsole(Log::Level::ERROR, errorMessage.c_str());
-			log.LogMessage(Log::Level::ERROR, errorMessage.c_str());
+			log.Output(LogLevel::ERROR, errorMessage.c_str());
         }
     }
 

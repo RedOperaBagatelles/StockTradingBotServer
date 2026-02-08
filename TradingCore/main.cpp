@@ -42,8 +42,7 @@ static int CallBackWebSocket(struct lws* wsi, enum lws_callback_reasons reason, 
     {
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
         {
-            g_log.LogConsole(Log::Level::INFO, "서버와 연결되었습니다.");
-            g_log.LogMessage(Log::Level::INFO, "서버와 연결되었습니다.");
+			g_log.Output(LogLevel::INFO, "서버와 연결되었습니다.");
 
             isConnected = true;
 
@@ -88,8 +87,7 @@ static int CallBackWebSocket(struct lws* wsi, enum lws_callback_reasons reason, 
                 {
                     std::string logMessage = "실시간 시세 서버 응답 수신 : " + responseJson.dump();
 
-                    g_log.LogConsole(Log::Level::INFO, logMessage.c_str());
-                    g_log.LogMessage(Log::Level::INFO, logMessage.c_str());
+					g_log.Output(LogLevel::INFO, logMessage.c_str());
                 }
 
                 // LOGIN 응답 처리
@@ -101,19 +99,15 @@ static int CallBackWebSocket(struct lws* wsi, enum lws_callback_reasons reason, 
                     {
                         std::string returnMsg = responseJson.value("return_msg", "Unknown error");
 
-                        g_log.LogConsole(Log::Level::ERROR, ("로그인 실패하였습니다: " + returnMsg).c_str());
-                        g_log.LogMessage(Log::Level::ERROR, ("로그인 실패하였습니다: " + returnMsg).c_str());
+						g_log.Output(LogLevel::ERROR, ("로그인 실패하였습니다: " + returnMsg).c_str());
 
                         isKeepRunning = false;
                     }
 
                     else
                     {
-                        g_log.LogConsole(Log::Level::INFO, "로그인 성공하였습니다.");
-                        g_log.LogMessage(Log::Level::INFO, "로그인 성공하였습니다.");
-
-                        g_log.LogConsole(Log::Level::INFO, "조건검색 목록조회 패킷을 전송합니다.");
-                        g_log.LogMessage(Log::Level::INFO, "조건검색 목록조회 패킷을 전송합니다.");
+						g_log.Output(LogLevel::INFO, "로그인 성공하였습니다.");
+						g_log.Output(LogLevel::INFO, "조건검색 목록조회 패킷을 전송합니다.");
 
                         isLoggedIn = true;
 
@@ -138,8 +132,7 @@ static int CallBackWebSocket(struct lws* wsi, enum lws_callback_reasons reason, 
                         {
                             std::string jmcode = item["values"]["9001"].get<std::string>();
 
-                            g_log.LogConsole(Log::Level::INFO, ("실시간 시세 데이터 수신 - 종목코드: " + jmcode).c_str());
-                            g_log.LogMessage(Log::Level::INFO, ("실시간 시세 데이터 수신 - 종목코드: " + jmcode).c_str());
+                            g_log.Output(LogLevel::INFO, ("실시간 시세 데이터 수신 - 종목코드: " + jmcode).c_str());
                         }
                     }
                 }
@@ -147,64 +140,59 @@ static int CallBackWebSocket(struct lws* wsi, enum lws_callback_reasons reason, 
 
             catch (json::parse_error& e)
             {
-                g_log.LogConsole(Log::Level::ERROR, ("JSON 파싱 오류: " + std::string(e.what())).c_str());
-                g_log.LogMessage(Log::Level::ERROR, ("JSON 파싱 오류: " + std::string(e.what())).c_str());
+                g_log.Output(LogLevel::ERROR, ("JSON 파싱 오류: " + std::string(e.what())).c_str());
             }
 
             break;
         }
 
-    case LWS_CALLBACK_CLIENT_WRITEABLE:
-    {
-        if (hasMessageToSend)
+        case LWS_CALLBACK_CLIENT_WRITEABLE:
         {
-            size_t messageLength = messageToSend.length();
-            unsigned char buffer[LWS_PRE + messageLength];
-            memcpy(&buffer[LWS_PRE], messageToSend.c_str(), messageLength);
-
-            int written = lws_write(wsi, &buffer[LWS_PRE], messageLength, LWS_WRITE_TEXT);
-
-            if (written < 0)
+            if (hasMessageToSend)
             {
-				g_log.LogConsole(Log::Level::ERROR, "메시지 전송 실패");
-				g_log.LogMessage(Log::Level::ERROR, "메시지 전송 실패");
+                size_t messageLength = messageToSend.length();
+                unsigned char buffer[LWS_PRE + messageLength];
+                memcpy(&buffer[LWS_PRE], messageToSend.c_str(), messageLength);
 
-                return -1;
+                int written = lws_write(wsi, &buffer[LWS_PRE], messageLength, LWS_WRITE_TEXT);
+
+                if (written < 0)
+                {
+	    			g_log.Output(LogLevel::ERROR, "메시지 전송 실패");
+
+                    return -1;
+                }
+
+	    		g_log.Output(LogLevel::INFO, ("Message sent : " + messageToSend).c_str());
+
+                hasMessageToSend = false;
             }
 
-			g_log.LogMessage(Log::Level::INFO, ("Message sent : " + messageToSend).c_str());
-			g_log.LogConsole(Log::Level::INFO, ("Message sent : " + messageToSend).c_str());
-
-            hasMessageToSend = false;
+            break;
         }
 
-        break;
-    }
+        case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
+        {
+            std::string logMessage = "연결 오류 : " + (in == nullptr) ? (char*)in : "Unknown error";
+            g_log.Output(LogLevel::ERROR, logMessage.c_str());
 
-    case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-    {
-        std::string logMessage = "연결 오류 : " + (in == nullptr) ? (char*)in : "Unknown error";
-        g_log.LogConsole(Log::Level::ERROR, logMessage.c_str());
-        g_log.LogMessage(Log::Level::ERROR, logMessage.c_str());
+            isConnected = false;
+            isKeepRunning = false;
 
-        isConnected = false;
-        isKeepRunning = false;
+            break;
+        }
+            
 
-        break;
-    }
-        
+        case LWS_CALLBACK_CLOSED:
+            g_log.Output(LogLevel::ERROR, "Connection closed by the server");
 
-    case LWS_CALLBACK_CLOSED:
-        g_log.LogConsole(Log::Level::ERROR, "Connection closed by the server");
-        g_log.LogMessage(Log::Level::ERROR, "Connection closed by the server");
+            isConnected = false;
+            isKeepRunning = false;
 
-        isConnected = false;
-        isKeepRunning = false;
+            break;
 
-        break;
-
-    default:
-        break;
+        default:
+            break;
     }
 
     return 0;
@@ -231,6 +219,7 @@ URLComponents ParseURL(const std::string& url)
 
     // 프로토콜 추출
     size_t protocolEnd = url.find("://");
+
     if (protocolEnd != std::string::npos)
     {
         components.protocol = url.substr(0, protocolEnd);
@@ -283,21 +272,18 @@ int main()
     socketURL = std::string(Config::socketURL) + "/api/dostk/websocket";
 
     // 액세스 토큰 발급
-	g_log.LogConsole(Log::Level::INFO, "액세스 토큰을 발급받는 중...");
-	g_log.LogMessage(Log::Level::INFO, "액세스 토큰을 발급받는 중...");
+	g_log.Output(LogLevel::INFO, "액세스 토큰을 발급받는 중...");
 
     accessToken = Login::GetAccessToken();
 
     if (accessToken.empty())
     {
-		g_log.LogConsole(Log::Level::ERROR, "토큰 발급 실패");
-		g_log.LogMessage(Log::Level::ERROR, "토큰 발급 실패");
+		g_log.Output(LogLevel::ERROR, "토큰 발급 실패");
 
         return -1;
     }
 
-	g_log.LogConsole(Log::Level::INFO, "토큰 발급 완료");
-	g_log.LogMessage(Log::Level::INFO, "토큰 발급 완료");
+	g_log.Output(LogLevel::INFO, "토큰 발급 완료");
 
     // URL 파싱
     URLComponents urlComp = ParseURL(socketURL);
@@ -323,8 +309,7 @@ int main()
 
     if (context == nullptr)
     {
-		g_log.LogConsole(Log::Level::ERROR, "libwebsockets 컨텍스트 생성 실패");
-		g_log.LogMessage(Log::Level::ERROR, "libwebsockets 컨텍스트 생성 실패");
+		g_log.Output(LogLevel::ERROR, "libwebsockets 컨텍스트 생성 실패");
 
         return -1;
     }
@@ -350,8 +335,7 @@ int main()
 
     if (wsi == nullptr)
     {
-		g_log.LogConsole(Log::Level::ERROR, "WebSocket 연결 실패");
-		g_log.LogMessage(Log::Level::ERROR, "WebSocket 연결 실패");
+		g_log.Output(LogLevel::ERROR, "WebSocket 연결 실패");
 
         lws_context_destroy(context);
 
@@ -367,8 +351,7 @@ int main()
 
         if (isLoggedIn && !messageSent)
         {
-			g_log.LogConsole(Log::Level::INFO, "실시간 항목 등록 패킷을 전송합니다.");
-			g_log.LogMessage(Log::Level::INFO, "실시간 항목 등록 패킷을 전송합니다.");
+			g_log.Output(LogLevel::INFO, "실시간 항목 등록 패킷을 전송합니다.");
 
             json cnsrreqPacket =
             {
@@ -399,8 +382,7 @@ int main()
 
     lws_context_destroy(context);
 
-	g_log.LogConsole(Log::Level::INFO, "프로그램 종료");
-	g_log.LogMessage(Log::Level::INFO, "프로그램 종료");
+	g_log.Output(LogLevel::INFO, "프로그램 종료");
 
     return 0;
 }

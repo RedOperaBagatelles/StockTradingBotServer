@@ -17,7 +17,7 @@
 
 static std::mutex g_logMutex;
 
-const void Log::SetConsoleColor(Log::Level level)
+const void Log::SetConsoleColor(LogLevel level)
 {
 #ifdef _WIN32
 	static HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);   // 콘솔 핸들
@@ -38,19 +38,19 @@ const void Log::SetConsoleColor(Log::Level level)
 
     switch (level)
     {
-    case Log::Level::NORMAL:
+    case LogLevel::NORMAL:
         attrs = originalStored ? originalAttrs : (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
         break;
 
-    case Log::Level::INFO:
+    case LogLevel::INFO:
         attrs = FOREGROUND_GREEN | FOREGROUND_INTENSITY;
         break;
 
-    case Log::Level::WARNING:
+    case LogLevel::WARNING:
         attrs = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY; // yellow-ish
         break;
 
-    case Log::Level::ERROR:
+    case LogLevel::ERROR:
         attrs = FOREGROUND_RED | FOREGROUND_INTENSITY;
         break;
 
@@ -62,16 +62,16 @@ const void Log::SetConsoleColor(Log::Level level)
 #else
     switch (level)
     {
-    case Log::Level::NORMAL:
+    case LogLevel::NORMAL:
         std::cout << "\033[0m"; // reset
         break;
-    case Log::Level::INFO:
+    case LogLevel::INFO:
         std::cout << "\033[32m"; // green
         break;
-    case Log::Level::WARNING:
+    case LogLevel::WARNING:
         std::cout << "\033[33m"; // yellow
         break;
-    case Log::Level::ERROR:
+    case LogLevel::ERROR:
 		// Error는 굵은 빨간색으로 표시
         std::cout << "\033[1;31m"; // bold red
         break;
@@ -97,14 +97,14 @@ const void Log::ResetConsoleColor()
 #endif
 }
 
-const char* Log::GetAnsiColorPrefix(Log::Level level)
+const char* Log::GetAnsiColorPrefix(LogLevel level)
 {
     switch (level)
     {
-    case Log::Level::NORMAL:  return "\033[0m";     // reset / default
-    case Log::Level::INFO:    return "\033[32m";    // green
-    case Log::Level::WARNING: return "\033[33m";    // yellow
-    case Log::Level::ERROR:   return "\033[1;31m";  // bold red
+    case LogLevel::NORMAL:  return "\033[0m";     // reset / default
+    case LogLevel::INFO:    return "\033[32m";    // green
+    case LogLevel::WARNING: return "\033[33m";    // yellow
+    case LogLevel::ERROR:   return "\033[1;31m";  // bold red
     default:                  return "\033[0m";
     }
 }
@@ -114,6 +114,16 @@ Log& Log::GetInstance()
     static Log instance;
 
     return instance;
+}
+
+// 로그 출력 메소드
+void Log::Output(LogLevel level, const char* message, LogTarget target)
+{
+    if (target & LogTarget::CONSOLE)
+        LogConsole(level, message);
+
+    if (target & LogTarget::FILE)
+        LogMessage(level, message);
 }
 
 // 현재 시간 문자열 반환 함수
@@ -136,26 +146,26 @@ std::string Log::GetCurrentTimeString()
 }
 
 // 로그 메시지 포맷팅 ([시간] [레벨] 메시지)
-std::string Log::LogWrite(Level level, const char* message)
+std::string Log::LogWrite(LogLevel level, const char* message)
 {
     std::ostringstream oss;
     oss << "[" << GetCurrentTimeString() << "] [" << GetLevelString(level) << "] " << message;
     return oss.str();
 }
 
-void Log::LogConsole(Level level, const char* message)
+void Log::LogConsole(LogLevel level, const char* message)
 {
     // 스레드 안전하게 콘솔에 로그 출력
     std::lock_guard<std::mutex> lock(g_logMutex);
     std::string line = LogWrite(level, message);
 
-	// Level에 따라 콘솔 색상 설정 후 출력, 리셋
+	// LogLevel에 따라 콘솔 색상 설정 후 출력, 리셋
     SetConsoleColor(level);
     std::cout << line << std::endl;
     ResetConsoleColor();
 }
 
-void Log::LogMessage(Level level, const char* message)
+void Log::LogMessage(LogLevel level, const char* message)
 {
     std::lock_guard<std::mutex> lock(g_logMutex);
 
