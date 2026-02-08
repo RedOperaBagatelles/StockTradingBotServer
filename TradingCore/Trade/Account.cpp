@@ -16,7 +16,6 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
-#include <iostream>
 
 using json = nlohmann::json;
 
@@ -232,17 +231,16 @@ bool Account::HasAccount(const std::string& accountNumber)
     return accounts.find(accountNumber) != accounts.end();
 }
 
-void Account::SetUseAccount(const bool isFake)
+void Account::SetUseAccount()
 {
     Log& log = Log::GetInstance();
-	const char* accountNumber = isFake ? Config::fakeAccountNum : Config::realAccountNum;
 
 	// 설정한 계좌번호가 있으면 해당 계좌번호로 설정
-    if (HasAccount(accountNumber))
+    if (HasAccount(Config::accountNum))
     {
-		currentAccountNumber = accountNumber;
+		currentAccountNumber = Config::accountNum;
 
-		log.Output(LogLevel::INFO, ("지정된 계좌번호 " + std::string(accountNumber) + "(으)로 설정합니다.").c_str());
+		log.Output(LogLevel::INFO, ("지정된 계좌번호 " + std::string(Config::accountNum) + "(으)로 설정합니다.").c_str());
 
         return;
     }

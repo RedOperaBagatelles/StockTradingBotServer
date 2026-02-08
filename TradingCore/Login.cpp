@@ -97,6 +97,12 @@ std::string Login::GetAccessToken()
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
 
+	if (token.empty())
+		log.Output(LogLevel::ERROR, "토큰 발급 실패");
+
+    else
+		log.Output(LogLevel::INFO, "토큰 발급 성공");
+
     return token;
 }
 
