@@ -4,6 +4,7 @@
 #include "Core/Config.h"
 #include "Core/Log.h"
 #include "Utility/Convert.h"
+#include "Utility/String.h"
 
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
@@ -11,14 +12,17 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <map>
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <iostream>
 
 using json = nlohmann::json;
 
 std::set<std::string> Account::accounts;
 std::string Account::currentAccountNumber;
+std::map<std::string, Holding> Account::holdings;
 
 std::set<std::string>& Account::GetAllAccountNumbers()
 {
@@ -278,4 +282,287 @@ size_t Account::HeaderCallback(char* buffer, size_t size, size_t nitems, void* u
     }
 
     return total;
+}
+
+void Account::RefreshCurrentHoldings()
+{
+    Log& log = Log::GetInstance();
+
+    // 현재 계좌번호 확인
+    if (currentAccountNumber.empty())
+    {
+        log.LogConsole(Log::Level::ERROR, "현재 사용 중인 계좌번호가 설정되지 않았습니다.");
+        log.LogMessage(Log::Level::ERROR, "현재 사용 중인 계좌번호가 설정되지 않았습니다.");
+
+        return;
+    }
+
+    // 액세스 토큰 가져오기
+    std::string token = Login::GetAccessToken();
+
+    if (token.empty())
+    {
+        log.LogConsole(Log::Level::ERROR, "접근 토큰이 비어있습니다. 잔고 조회를 중단합니다.");
+        log.LogMessage(Log::Level::ERROR, "접근 토큰이 비어있습니다. 잔고 조회를 중단합니다.");
+
+        return;
+    }
+
+	// API 엔드포인트 및 URL 설정
+    const std::string endpoint = "/api/dostk/acnt";
+    const std::string url = std::string(Config::hostURL) + endpoint;
+
+    std::string hasGetNextData = "N";
+    std::string nextKey = "";
+
+    const int maxPages = 100;
+
+    // 기존 holdings 초기화
+    holdings.clear();
+
+    log.LogConsole(Log::Level::INFO, "현재 보유 종목 조회를 시작합니다...");
+    log.LogMessage(Log::Level::INFO, "현재 보유 종목 조회를 시작합니다...");
+
+    for (int page = 0; page < maxPages; page++)
+    {
+        CURL* curl = curl_easy_init();
+
+        if (curl == nullptr)
+        {
+            log.LogConsole(Log::Level::ERROR, "CURL 초기화 실패 (Account::FetchCurrentHoldings)");
+            log.LogMessage(Log::Level::ERROR, "CURL 초기화 실패 (Account::FetchCurrentHoldings)");
+
+            break;
+        }
+
+        std::string readBuffer;
+        std::string headerBuffer;
+
+        struct curl_slist* headers = NULL;
+
+        std::string hdrContentType = "Content-Type: application/json;charset=UTF-8";
+        std::string hdrAuth = "authorization: Bearer " + token;
+        std::string hdrCont = "cont-yn: " + hasGetNextData;
+        std::string hdrNext = "next-key: " + nextKey;
+        std::string hdrApiId = "api-id: kt00018";
+
+        headers = curl_slist_append(headers, hdrContentType.c_str());
+        headers = curl_slist_append(headers, hdrAuth.c_str());
+        headers = curl_slist_append(headers, hdrCont.c_str());
+        headers = curl_slist_append(headers, hdrNext.c_str());
+        headers = curl_slist_append(headers, hdrApiId.c_str());
+
+        // Request body
+        json requestBody =
+        {
+            { "qry_tp", "2" },              // 2 : 개별
+            { "dmst_stex_tp", "KRX" }       // KRX : 한국거래소
+        };
+
+        std::string jsonStr = requestBody.dump();
+
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonStr.c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, Login::WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headerBuffer);
+
+        CURLcode response = curl_easy_perform(curl);
+
+        if (response != CURLE_OK)
+        {
+            std::string errorMessage = std::string("HTTP 요청 실패 : ") + curl_easy_strerror(response);
+
+            log.LogConsole(Log::Level::ERROR, errorMessage.c_str());
+            log.LogMessage(Log::Level::ERROR, errorMessage.c_str());
+
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            break;
+        }
+
+        long responseCode = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+
+        if (responseCode != 200)
+        {
+            std::string errorMessage = "잔고 조회 비정상 응답 코드 수신 : " + std::to_string(responseCode);
+
+            log.LogConsole(Log::Level::ERROR, errorMessage.c_str());
+            log.LogMessage(Log::Level::ERROR, errorMessage.c_str());
+
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            break;
+        }
+
+        // 헤더 파싱
+        std::istringstream hstream(headerBuffer);
+        std::string line;
+        std::string hasThisNextData = "N";
+        std::string newNext = "";
+
+        while (std::getline(hstream, line))
+        {
+            JsonData data = Convert::GetJsonData(line);
+
+            if (data.key.empty())
+                continue;
+
+            std::string lowerKey = data.key;
+            std::transform(lowerKey.begin(), lowerKey.end(), lowerKey.begin(), ::tolower);
+
+            if (lowerKey == "cont-yn")
+                hasThisNextData = data.value;
+
+            else if (lowerKey == "next-key")
+                newNext = data.value;
+        }
+
+        // JSON 파싱
+        try
+        {
+            if (!readBuffer.empty())
+            {
+                json data = json::parse(readBuffer);
+
+                int returnCode = data.value("return_code", -1);
+                std::string returnMsg = data.value("return_msg", "");
+
+                if (returnCode != 0)
+                {
+                    std::ostringstream oss;
+                    oss << "잔고 조회 실패: [" << returnCode << "] " << returnMsg;
+
+                    log.LogConsole(Log::Level::ERROR, oss.str().c_str());
+                    log.LogMessage(Log::Level::ERROR, oss.str().c_str());
+
+                    break;
+                }
+
+                // acnt_evlt_remn_indv_tot 배열 파싱
+                if (data.contains("acnt_evlt_remn_indv_tot") && data["acnt_evlt_remn_indv_tot"].is_array())
+                {
+                    for (auto& item : data["acnt_evlt_remn_indv_tot"]) 
+                    {
+                        Holding holding;
+                        holding.account = currentAccountNumber;
+                        holding.code = item.value("stk_cd", "");
+                        holding.name = item.value("stk_nm", "");
+
+                        std::string qtyStr = String::GetSignDigit(item.value("rmnd_qty", "0"));
+                        std::string priceStr = String::GetSignDigit(item.value("cur_prc", "0"));
+                        std::string valueStr = String::GetSignDigit(item.value("evlt_amt", "0"));
+                        std::string purchaseStr = String::GetSignDigit(item.value("pur_pric", "0"));
+                        std::string plStr = String::GetSignDigit(item.value("evltv_prft", "0"));
+                        std::string rateStr = item.value("prft_rt", "0.0");
+
+                        if (!qtyStr.empty()) holding.quantity = std::stol(qtyStr);
+                        if (!priceStr.empty()) holding.price = std::stoll(priceStr);
+                        if (!valueStr.empty()) holding.value = std::stoll(valueStr);
+                        if (!purchaseStr.empty()) holding.purchasePrice = std::stoll(purchaseStr);
+                        if (!plStr.empty()) holding.profitLoss = std::stoll(plStr);
+
+                        // prft_rt에서 숫자만 추출
+                        std::string cleanRate = String::GetSignDigit(rateStr);
+
+                        if (!cleanRate.empty())
+                        {
+                            // 소수점 처리
+                            size_t dotPos = rateStr.find('.');
+
+                            if (dotPos != std::string::npos)
+                                holding.profitRate = std::stod(rateStr);
+
+                            else
+                                holding.profitRate = std::stod(cleanRate);
+                        }
+
+                        std::string key = holding.account + ":" + holding.code;
+                        holdings[key] = holding;
+
+                        std::ostringstream oss;
+                        oss << "종목 추가 : " << holding.code << " (" << holding.name << ") "
+                            << "수량 = " << holding.quantity << " "
+                            << "현재가 = " << holding.price << " "
+                            << "평가금액 = " << holding.value << " "
+                            << "손익 = " << holding.profitLoss << " "
+                            << "수익률 = " << holding.profitRate << "%";
+
+                        log.LogConsole(Log::Level::INFO, oss.str().c_str());
+                        log.LogMessage(Log::Level::INFO, oss.str().c_str());
+                    }
+                }
+            }
+        }
+
+        catch (json::parse_error& e)
+        {
+            std::string err = std::string("JSON 파싱 오류: ") + e.what();
+            log.LogConsole(Log::Level::ERROR, err.c_str());
+            log.LogMessage(Log::Level::ERROR, err.c_str());
+        }
+
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+
+        hasGetNextData = hasThisNextData;
+        nextKey = newNext;
+
+        if (hasGetNextData != "Y")
+            break;
+    }
+
+    std::ostringstream summary;
+    summary << "보유 종목 조회 완료. 총 " << holdings.size() << "개 종목";
+
+    log.LogConsole(Log::Level::INFO, summary.str().c_str());
+    log.LogMessage(Log::Level::INFO, summary.str().c_str());
+}
+
+void Account::ShowHoldings()
+{
+    Log& log = Log::GetInstance();
+
+    if (holdings.empty())
+    {
+        log.LogConsole(Log::Level::INFO, "보유 종목이 없습니다.");
+
+        return;
+    }
+
+    std::ostringstream oss;
+    oss << "\n========== 현재 보유 종목 ==========";
+    log.LogConsole(Log::Level::INFO, oss.str().c_str());
+
+    double totalValue = 0.0;
+    double totalProfitLoss = 0.0;
+
+    for (std::pair<std::string, Holding> currentPair : holdings)
+    {
+        const Holding& holding = currentPair.second;
+
+        std::ostringstream line;
+
+        line << holding.code << " (" << holding.name << ")\n"
+             << "  보유수량 : " << holding.quantity << "주\n"
+             << "  매입가 : " << holding.purchasePrice << "원\n"
+             << "  현재가 : " << holding.price << "원\n"
+             << "  평가금액 : " << holding.value << "원\n"
+             << "  평가손익 : " << holding.profitLoss << "원 (" << holding.profitRate << "%)";
+
+        log.LogConsole(Log::Level::INFO, line.str().c_str());
+
+        totalValue += static_cast<double>(holding.value);
+        totalProfitLoss += static_cast<double>(holding.profitLoss);
+    }
+
+    std::ostringstream totalLine;
+    totalLine << "===================================\n"
+              << "총 평가금액 : " << static_cast<long long>(totalValue) << "원\n"
+              << "총 평가손익 : " << static_cast<long long>(totalProfitLoss) << "원";
+
+    log.LogConsole(Log::Level::INFO, totalLine.str().c_str());
 }
